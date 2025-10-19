@@ -3,7 +3,7 @@ import { toast } from 'react-hot-toast';
 import { useNavigate } from "react-router-dom";
 import axios from 'axios'
 
-axios.defaults.baseURL = import.meta.env.VITE_BASE_URL;
+axios.defaults.baseURL = "https://itp-backend-waw1.onrender.com";
 
 export const AppContext = createContext();
 
