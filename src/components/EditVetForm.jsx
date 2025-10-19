@@ -6,6 +6,27 @@ import "react-datepicker/dist/react-datepicker.css";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
+import { useAppContext } from "../context/AppContext";
+
+/* ---------- Date helpers (pin to local noon to avoid TZ shifts) ---------- */
+function toLocalYMD(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+function normalizeToLocalNoon(d) {
+  const c = new Date(d);
+  c.setHours(12, 0, 0, 0);
+  return c;
+}
+function fromYMDToLocalDate(ymd) {
+  if (!ymd) return null;
+  const [Y, M, D] = String(ymd).split("-").map((n) => parseInt(n || "0", 10));
+  const d = new Date(Y, (M || 1) - 1, D || 1);
+  d.setHours(12, 0, 0, 0);
+  return d;
+}
 
 /* ---------- Shared constants  ---------- */
 const PET_TYPES = ["Dog", "Cat", "Rabbit", "Bird", "Other"];
@@ -29,22 +50,33 @@ const buildSlots = () => {
 };
 const TIME_SLOTS = buildSlots();
 
-const LK_PHONE_REGEX = /^(011|070|071|072|075|076|077|078)\d{7}$/;
+/* ---------- Email / name ---------- */
 const NAME_REGEX = /^[A-Za-z\s]+$/;
 const EMAIL_STARTS_WITH_LETTER = /^[A-Za-z][A-Za-z0-9._%+-]*@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-
 const DISPOSABLE_DOMAINS = new Set([
-  "mailinator.com",
-  "yopmail.com",
-  "guerrillamail.com",
-  "10minutemail.com",
-  "temp-mail.org",
-  "tempmail.dev",
-  "discard.email",
-  "getnada.com",
-  "trashmail.com",
+  "mailinator.com","yopmail.com","guerrillamail.com","10minutemail.com",
+  "temp-mail.org","tempmail.dev","discard.email","getnada.com","trashmail.com",
 ]);
 
+/* ---------- Phone: +94 | 9-digits UI ---------- */
+const LK_AFTER_CC_REGEX = /^(11|70|71|72|75|76|77|78)\d{7}$/; // 9 digits after +94
+
+// "+94711234567" -> "711234567"; "0711234567" -> "711234567"; fallback: last 9 digits
+function toNineAfter94(input = "") {
+  const s = String(input);
+  const m = s.match(/^\+94(\d{9})$/);
+  if (m) return m[1];
+  const digits = s.replace(/\D/g, "");
+  if (digits.length === 10 && digits.startsWith("0")) return digits.slice(1);
+  if (digits.length === 9) return digits;
+  return digits.slice(-9);
+}
+function toE164FromNine(nine = "") {
+  const v = String(nine || "").replace(/\D/g, "").slice(0, 9);
+  return v ? `+94${v}` : "";
+}
+
+/* ---------- Validation ---------- */
 const schema = yup.object({
   ownerName: yup
     .string()
@@ -65,10 +97,11 @@ const schema = yup.object({
       const domain = val.split("@")[1];
       return domain && !DISPOSABLE_DOMAINS.has(domain.toLowerCase());
     }),
+  // store ONLY the 9 digits after +94 in form state
   ownerPhone: yup
     .string()
     .required("Contact number is required.")
-    .matches(LK_PHONE_REGEX, "Must start with 011/070/071/072/075/076/077/078 and be 10 digits."),
+    .matches(LK_AFTER_CC_REGEX, "Enter 9 digits after +94 (e.g., 711234567 or 112345678)"),
   petType: yup.string().oneOf(PET_TYPES, "Select a valid pet type").required("Select pet type."),
   petSize: yup.string().oneOf(PET_SIZES.map((p) => p.value), "Select a valid size").required("Select pet size."),
   date: yup
@@ -96,7 +129,8 @@ export default function EditVetForm() {
   const { enqueueSnackbar } = useSnackbar();
   const { id: idFromParams } = useParams();
   const [params] = useSearchParams();
-  const location = useLocation(); // <-- ADD THIS
+  const location = useLocation();
+  const {backendUrl} = useAppContext();
 
   // Prefer param, then query (?editId), then state
   const editId =
@@ -104,9 +138,6 @@ export default function EditVetForm() {
     params.get("editId") ||
     location.state?.appointment?._id ||
     location.state?.appointment?.id;
-
-  // If no id, you can redirect or show a message (optional)
-  // if (!editId) return <div className="p-6">Missing appointment id.</div>;
 
   const selectedService = params.get("service") || "";
   const selectedPrice = params.get("price") || "";
@@ -123,7 +154,7 @@ export default function EditVetForm() {
     resolver: yupResolver(schema),
     defaultValues: {
       ownerName: "",
-      ownerPhone: "",
+      ownerPhone: "", // 9 digits only (UI)
       ownerEmail: "",
       petType: "",
       petSize: "",
@@ -139,19 +170,15 @@ export default function EditVetForm() {
     const v = e.currentTarget.value.replace(/[^A-Za-z\s]/g, "");
     if (v !== e.currentTarget.value) e.currentTarget.value = v;
   };
-  const onPhoneInput = (e) => {
-    const digits = e.currentTarget.value.replace(/\D/g, "").slice(0, 10);
-    if (digits !== e.currentTarget.value) e.currentTarget.value = digits;
-  };
 
   // ---- Fetch existing appointment ----
   useEffect(() => {
     let ignore = false;
     if (!editId) return;
 
-    const fetchData = async () => {
+    (async () => {
       try {
-        const r = await fetch(`http://localhost:3000/api/vet/${editId}`);
+        const r = await fetch(`${backendUrl}/api/vet/${editId}`);
         const ct = r.headers.get("content-type") || "";
         const data = ct.includes("application/json") ? await r.json() : await r.text();
 
@@ -163,7 +190,7 @@ export default function EditVetForm() {
         const appt = data?.data || data;
         if (!appt || ignore) return;
 
-        const dateObj = appt.dateISO ? new Date(appt.dateISO) : null;
+        const dateObj = appt.dateISO ? fromYMDToLocalDate(appt.dateISO) : null;
 
         const lockedReason =
           appt.reason && appt.reason.trim()
@@ -172,7 +199,7 @@ export default function EditVetForm() {
 
         reset({
           ownerName: appt.ownerName || "",
-          ownerPhone: appt.ownerPhone || "",
+          ownerPhone: toNineAfter94(appt.ownerPhone || ""),  // E.164/local -> 9 digits
           ownerEmail: appt.ownerEmail || "",
           petType: appt.petType || "",
           petSize: appt.petSize || "",
@@ -188,9 +215,8 @@ export default function EditVetForm() {
         console.error(e);
         enqueueSnackbar("Error loading appointment", { variant: "error" });
       }
-    };
+    })();
 
-    fetchData();
     return () => {
       ignore = true;
     };
@@ -201,16 +227,18 @@ export default function EditVetForm() {
   // ---- Submit update ----
   const onSubmit = async (values) => {
     try {
+      const dateISO = toLocalYMD(normalizeToLocalNoon(values.date));
+
       const fd = new FormData();
       fd.append("ownerName", values.ownerName.trim());
-      fd.append("ownerPhone", values.ownerPhone.trim());
+      fd.append("ownerPhone", toE164FromNine(values.ownerPhone)); // send E.164
       fd.append("ownerEmail", values.ownerEmail.trim());
       fd.append("petType", values.petType);
       fd.append("petSize", values.petSize);
 
       fd.append("reason", (reasonLockedValue || "").trim()); // locked
 
-      fd.append("dateISO", values.date.toISOString().split("T")[0]);
+      fd.append("dateISO", dateISO);
       fd.append("timeSlotMinutes", String(values.timeSlot));
 
       if (values.medicalFile && values.medicalFile.length > 0) {
@@ -221,7 +249,7 @@ export default function EditVetForm() {
       if (selectedService) fd.append("selectedService", selectedService);
       if (selectedPrice) fd.append("selectedPrice", selectedPrice);
 
-      const UPDATE_URL = `http://localhost:3000/api/vet/${editId}`;
+      const UPDATE_URL = `${backendUrl}/api/vet/${editId}`;
       const r = await fetch(UPDATE_URL, { method: "PUT", body: fd });
 
       const ct = r.headers.get("content-type") || "";
@@ -272,23 +300,36 @@ export default function EditVetForm() {
                   type="text"
                   placeholder="e.g., Aaisha Shahani"
                   {...register("ownerName")}
-                  onInput={onOwnerNameInput}
+                  onInput={(e) => {
+                    const v = e.currentTarget.value.replace(/[^A-Za-z\s]/g, "");
+                    if (v !== e.currentTarget.value) e.currentTarget.value = v;
+                  }}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 {errors.ownerName && <p className="mt-1 text-sm text-red-600">{errors.ownerName.message}</p>}
               </div>
 
+              {/* ✅ Phone: +94 chip + 9 digits field */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
-                <input
-                  type="tel"
-                  placeholder="0711234567"
-                  {...register("ownerPhone")}
-                  onInput={onPhoneInput}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <div className="flex">
+                  <span className="inline-flex items-center px-3 rounded-l-lg border border-slate-300 bg-slate-100 text-slate-700 select-none">+94</span>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={9}
+                    placeholder="711234567 or 112345678"
+                    {...register("ownerPhone")}
+                    onInput={(e) => {
+                      let v = e.currentTarget.value.replace(/\D/g, "");
+                      if (v.startsWith("0")) v = v.slice(1);
+                      e.currentTarget.value = v.slice(0, 9);
+                    }}
+                    className="w-full rounded-r-lg border border-slate-300 border-l-0 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
                 <p className="mt-1 text-[12px] text-slate-500">
-                  Must start with 011/070/071/072/075/076/077/078 and be 10 digits.
+                  Type the <b>9 digits after +94</b> (e.g., <code>711234567</code> or <code>112345678</code>).
                 </p>
                 {errors.ownerPhone && <p className="mt-1 text-sm text-red-600">{errors.ownerPhone.message}</p>}
               </div>
@@ -422,7 +463,7 @@ export default function EditVetForm() {
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 type="button"
-                onClick={() => navigate("/book/vetappointment")}
+                onClick={() => navigate("/MyCareAppointments")}
                 className="rounded-lg border border-slate-300 bg-white text-slate-700 px-4 py-2 hover:bg-slate-50"
               >
                 Cancel
