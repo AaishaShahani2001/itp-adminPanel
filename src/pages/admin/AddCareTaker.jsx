@@ -14,34 +14,121 @@ const AddCareTaker = () => {
     address: "",
   });
 
-  const {aToken} = useAdminContext()
-
+  const { aToken } = useAdminContext();
   const [image, setImage] = useState(null);
 
+  //  handle input change
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    if (name === 'email') {
+      if (/[A-Z]/.test(value)) {
+        toast.error('Email must be lowercase.');
+      }
+      setFormData({ ...formData, email: value.toLowerCase() });
+      return;
+    }
+    setFormData({ ...formData, [name]: value });
   };
 
   const handleImageChange = (e) => {
     setImage(e.target.files[0]);
   };
 
+  //  Strong Validation Function
+  const validateForm = () => {
+    const { name, email, password, speciality, experience, about, address } = formData;
+
+    // 1 Empty fields
+    if (!name || !email || !password || !speciality || !experience || !about || !address) {
+      toast.error("⚠ All fields are required!");
+      return false;
+    }
+
+    // 2 Name format: only letters and spaces, at least 2 chars
+    if (!/^[A-Za-z\s]{2,50}$/.test(name.trim())) {
+      toast.error("Name must contain only letters and spaces (2–50 chars).");
+      return false;
+    }
+
+    // 3 Email format
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(email.trim())) {
+      toast.error("Please enter a valid email address!");
+      return false;
+    }
+
+    // 4 Strong password: 8+ chars, 1 uppercase, 1 lowercase, 1 number, 1 special
+    const passwordPattern =
+      /^(?=.[a-z])(?=.[A-Z])(?=.\d)(?=.[@$!%?&])[A-Za-z\d@$!%?&]{8,}$/;
+    if (!passwordPattern.test(password)) {
+      toast.error(
+        "Password must have 8+ chars, incl. uppercase, lowercase, number & special symbol."
+      );
+      return false;
+    }
+
+    // 5 Speciality validation: 2–50 chars, letters/spaces only
+    if (!/^[A-Za-z\s]{2,50}$/.test(speciality.trim())) {
+      toast.error("Speciality must contain only letters and spaces (2–50 chars).");
+      return false;
+    }
+
+    // 6 Experience: must be positive and reasonable (0–60)
+    if (isNaN(experience) || experience <= 0 || experience > 60) {
+      toast.error("Experience must be a valid number between 1 and 60.");
+      return false;
+    }
+
+    // 7 About: at least 20 characters
+    if (about.trim().length < 20) {
+      toast.error("About section must be at least 20 characters long.");
+      return false;
+    }
+
+    // 8 Address: at least 10 characters
+    if (address.trim().length < 10) {
+      toast.error("Address must be at least 10 characters long.");
+      return false;
+    }
+
+    // 9 Image validation
+    if (!image) {
+      toast.error("Please upload a caretaker image!");
+      return false;
+    }
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(image.type)) {
+      toast.error("Only JPEG, PNG, or WEBP image formats are allowed!");
+      return false;
+    }
+
+    //  Image size limit (2MB)
+    const maxSize = 2 * 1024 * 1024;
+    if (image.size > maxSize) {
+      toast.error("Image size should be less than 2MB!");
+      return false;
+    }
+
+    return true;
+  };
+
+  //  Submit handler
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
 
     try {
       const data = new FormData();
-      Object.keys(formData).forEach((key) => {
-        data.append(key, formData[key]);
-      });
+      Object.keys(formData).forEach((key) => data.append(key, formData[key]));
       data.append("image", image);
 
-      const res = await axios.post("http://localhost:3000/api/admin/add-caretaker", data,  {
-        headers: {aToken },
+      const res = await axios.post("http://localhost:3000/api/admin/add-caretaker", data, {
+        headers: { aToken },
       });
 
       if (res.data.success) {
-        toast.success(res.data.message);
+        toast.success("Caretaker added successfully!");
         setFormData({
           name: "",
           email: "",
@@ -107,7 +194,6 @@ const AddCareTaker = () => {
 
           {/* Right column */}
           <div className="flex flex-col gap-4">
-           
             <input
               type="text"
               name="experience"
@@ -132,7 +218,7 @@ const AddCareTaker = () => {
             ></textarea>
           </div>
 
-          {/* Full width for image upload */}
+          {/* Image upload */}
           <div className="col-span-2 flex flex-col items-center gap-3 mt-3">
             <label className="w-full cursor-pointer bg-green-100 border border-green-600 text-green-700 rounded-lg p-3 text-center hover:bg-green-200">
               Upload Care Taker Image
