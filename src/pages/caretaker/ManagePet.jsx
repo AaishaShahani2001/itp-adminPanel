@@ -9,7 +9,18 @@ import autoTable from "jspdf-autotable";
 const ManagePet = () => {
   const { axios, currency } = useAppContext();
   const [pets, setPets] = useState([]);
+  const [filteredPets, setFilteredPets] = useState([]);
   const [editingPet, setEditingPet] = useState(null);
+  
+  // Filter states
+  const [filters, setFilters] = useState({
+    species: 'all',
+    gender: 'all',
+    ageRange: 'all',
+    priceRange: 'all',
+    compatibility: 'all',
+    searchTerm: ''
+  });
   const [editForm, setEditForm] = useState({
     species: '',
     breed: '',
@@ -31,6 +42,7 @@ const ManagePet = () => {
     const { data } = await axios.get('/api/caretaker/pets');
     if (data.success) {
       setPets(data.pets);
+      setFilteredPets(data.pets);
       console.log('Fetched pets:', data.pets.map(p => ({ _id: p._id, species: p.species }))); // Ensure _id is logged
     } else {
       toast.error(data.message);
@@ -39,7 +51,101 @@ const ManagePet = () => {
     console.error('Fetch error:', error.response?.data || error.message);
     toast.error(error.message);
   }
-};
+  };
+
+  // Filter function
+  const applyFilters = () => {
+    let filtered = [...pets];
+
+    // Species filter
+    if (filters.species !== 'all') {
+      filtered = filtered.filter(pet => pet.species === filters.species);
+    }
+
+    // Gender filter
+    if (filters.gender !== 'all') {
+      filtered = filtered.filter(pet => pet.gender === filters.gender);
+    }
+
+    // Age range filter
+    if (filters.ageRange !== 'all') {
+      switch (filters.ageRange) {
+        case 'puppy':
+          filtered = filtered.filter(pet => pet.age <= 1);
+          break;
+        case 'young':
+          filtered = filtered.filter(pet => pet.age > 1 && pet.age <= 3);
+          break;
+        case 'adult':
+          filtered = filtered.filter(pet => pet.age > 3 && pet.age <= 7);
+          break;
+        case 'senior':
+          filtered = filtered.filter(pet => pet.age > 7);
+          break;
+        default:
+          break;
+      }
+    }
+
+    // Price range filter
+    if (filters.priceRange !== 'all') {
+      switch (filters.priceRange) {
+        case 'low':
+          filtered = filtered.filter(pet => pet.price <= 5000);
+          break;
+        case 'medium':
+          filtered = filtered.filter(pet => pet.price > 5000 && pet.price <= 15000);
+          break;
+        case 'high':
+          filtered = filtered.filter(pet => pet.price > 15000);
+          break;
+        default:
+          break;
+      }
+    }
+
+    // Compatibility filter
+    if (filters.compatibility !== 'all') {
+      switch (filters.compatibility) {
+        case 'kids_yes':
+          filtered = filtered.filter(pet => pet.goodWithKids === 'Yes');
+          break;
+        case 'kids_no':
+          filtered = filtered.filter(pet => pet.goodWithKids === 'No');
+          break;
+        case 'pets_yes':
+          filtered = filtered.filter(pet => pet.goodWithPets === 'Yes');
+          break;
+        case 'pets_no':
+          filtered = filtered.filter(pet => pet.goodWithPets === 'No');
+          break;
+        default:
+          break;
+      }
+    }
+
+    // Search term filter
+    if (filters.searchTerm) {
+      const searchLower = filters.searchTerm.toLowerCase();
+      filtered = filtered.filter(pet => 
+        pet.species?.toLowerCase().includes(searchLower) ||
+        pet.breed?.toLowerCase().includes(searchLower) ||
+        pet.color?.toLowerCase().includes(searchLower) ||
+        pet.diet?.toLowerCase().includes(searchLower) ||
+        pet.medical?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    setFilteredPets(filtered);
+  };
+
+  // Handle filter changes
+  const handleFilterChange = (filterType, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterType]: value
+    }));
+  };
 
 const deletePet = async (petId) => {
     const confirm = window.confirm(
@@ -76,7 +182,7 @@ const deletePet = async (petId) => {
   doc.text(`Generated: ${new Date().toLocaleString()}`, 40, 60);
 
   // Build rows
-  const body = pets.map((p) => [
+  const body = filteredPets.map((p) => [
     p.species || "-",
     p.breed || "-",
     p.gender || "-",
@@ -110,12 +216,12 @@ const deletePet = async (petId) => {
   doc.text("Summary", 40, y);
   doc.setFontSize(10);
   y += 16;
-  doc.text(`Total pets: ${pets.length}`, 40, y);
+  doc.text(`Total pets: ${filteredPets.length}`, 40, y);
 
-  const dogs = pets.filter(p => p.species?.toLowerCase() === "dog").length;
-  const cats = pets.filter(p => p.species?.toLowerCase() === "cat").length;
-  const rabbits = pets.filter(p => p.species?.toLowerCase() === "rabbit").length;
-  const others = pets.length - (dogs + cats + rabbits);
+  const dogs = filteredPets.filter(p => p.species?.toLowerCase() === "dog").length;
+  const cats = filteredPets.filter(p => p.species?.toLowerCase() === "cat").length;
+  const rabbits = filteredPets.filter(p => p.species?.toLowerCase() === "rabbit").length;
+  const others = filteredPets.length - (dogs + cats + rabbits);
 
   y += 14;
   doc.text(`By type: Dogs ${dogs}, Cats ${cats}, Rabbits ${rabbits}, Others ${others}`, 40, y);
@@ -127,6 +233,11 @@ const deletePet = async (petId) => {
   useEffect(() => {
     fetchCaretakerPet();
   }, []);
+
+  // Apply filters whenever filters or pets change
+  useEffect(() => {
+    applyFilters();
+  }, [filters, pets]);
 
   const handleEditClick = (pet) => {
     console.log('Selected pet for edit:', { _id: pet._id, species: pet.species });
@@ -251,6 +362,108 @@ const deletePet = async (petId) => {
         align='left'
       />
 
+      {/* Horizontal Filter Bar */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 mt-6 p-4">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Search Input */}
+          <div className="flex-1 min-w-[200px]">
+            <input
+              type="text"
+              placeholder="Search pets..."
+              value={filters.searchTerm}
+              onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+            />
+          </div>
+
+          {/* Species Filter */}
+          <div className="min-w-[120px]">
+            <select
+              value={filters.species}
+              onChange={(e) => handleFilterChange('species', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+            >
+              <option value="all">All Species</option>
+              {[...new Set(pets.map(pet => pet.species).filter(Boolean))].map(species => (
+                <option key={species} value={species}>{species}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Gender Filter */}
+          <div className="min-w-[100px]">
+            <select
+              value={filters.gender}
+              onChange={(e) => handleFilterChange('gender', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+            >
+              <option value="all">All Gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </div>
+
+          {/* Age Range Filter */}
+          <div className="min-w-[120px]">
+            <select
+              value={filters.ageRange}
+              onChange={(e) => handleFilterChange('ageRange', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+            >
+              <option value="all">All Ages</option>
+              <option value="puppy">Puppy (≤1yr)</option>
+              <option value="young">Young (1-3yrs)</option>
+              <option value="adult">Adult (3-7yrs)</option>
+              <option value="senior">Senior (>7yrs)</option>
+            </select>
+          </div>
+
+          {/* Price Range Filter */}
+          <div className="min-w-[120px]">
+            <select
+              value={filters.priceRange}
+              onChange={(e) => handleFilterChange('priceRange', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+            >
+              <option value="all">All Prices</option>
+              <option value="low">Low (≤5k)</option>
+              <option value="medium">Medium (5k-15k)</option>
+              <option value="high">High (>15k)</option>
+            </select>
+          </div>
+
+          {/* Compatibility Filter */}
+          <div className="min-w-[140px]">
+            <select
+              value={filters.compatibility}
+              onChange={(e) => handleFilterChange('compatibility', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+            >
+              <option value="all">All Compatibility</option>
+              <option value="kids_yes">Good with Kids</option>
+              <option value="kids_no">Not Good with Kids</option>
+              <option value="pets_yes">Good with Pets</option>
+              <option value="pets_no">Not Good with Pets</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Results Count */}
+        <div className="mt-3 flex items-center justify-between">
+          <p className="text-sm text-gray-600">
+            Showing <span className="font-semibold text-blue-600">{filteredPets.length}</span> of <span className="font-semibold">{pets.length}</span> pets
+          </p>
+          {filteredPets.length !== pets.length && (
+            <div className="flex items-center gap-2 text-sm text-blue-600">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              Filters Active
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className='max-w-7xl w-full rounded-md overflow-hidden border border-borderColor mt-6'>
         <table className='w-full border-collapse text-left text-sm text-gray-600'>
           <thead className='text-gray-500'>
@@ -267,7 +480,25 @@ const deletePet = async (petId) => {
             </tr>
           </thead>
           <tbody>
-            {pets.map((pet, index) => (
+            {filteredPets.length === 0 ? (
+              <tr>
+                <td colSpan="9" className="px-6 py-12 text-center">
+                  <div className="flex flex-col items-center justify-center">
+                    <svg className="w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                    <p className="text-gray-500 text-lg font-medium">No pets found</p>
+                    <p className="text-gray-400 text-sm">
+                      {pets.length === 0 
+                        ? "No pets have been added yet" 
+                        : "No pets match your current filters. Try adjusting your search criteria."
+                      }
+                    </p>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+            filteredPets.map((pet, index) => (
               <tr key={pet._id || index} className='border-t border-borderColor'>
                 <td className='p-3 flex items-center gap-3'>
                   <img
@@ -302,7 +533,8 @@ const deletePet = async (petId) => {
                   </button>
                 </td>
               </tr>
-            ))}
+            ))
+            )}
           </tbody>
         </table>
       </div>

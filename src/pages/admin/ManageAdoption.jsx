@@ -12,11 +12,21 @@ const ManageAdoption = () => {
   const { aToken } = useAdminContext();
 
   const [adoptions, setAdoptions] = useState([]);
+  const [filteredAdoptions, setFilteredAdoptions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(null);
   const [showFinishConfirm, setShowFinishConfirm] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(null);
+  
+  // Filter states
+  const [filters, setFilters] = useState({
+    status: 'all',
+    payment: 'all',
+    petSpecies: 'all',
+    dateRange: 'all',
+    searchTerm: ''
+  });
 
   const fetchAdminAdoptions = async () => {
     setIsLoading(true);
@@ -26,6 +36,7 @@ const ManageAdoption = () => {
 
       if (data.success) {
         setAdoptions(data.adoptions);
+        setFilteredAdoptions(data.adoptions);
       } else {
         setError(data.message || "Failed to fetch adoptions");
       }
@@ -35,6 +46,83 @@ const ManageAdoption = () => {
       setIsLoading(false);
     }
   };
+
+  // Filter function
+  const applyFilters = () => {
+    let filtered = [...adoptions];
+
+    // Status filter
+    if (filters.status !== 'all') {
+      filtered = filtered.filter(adopt => adopt.status === filters.status);
+    }
+
+    // Payment filter
+    if (filters.payment !== 'all') {
+      const isPaid = filters.payment === 'paid';
+      filtered = filtered.filter(adopt => adopt.isPaid === isPaid);
+    }
+
+    // Pet species filter
+    if (filters.petSpecies !== 'all') {
+      filtered = filtered.filter(adopt => adopt.pet?.species === filters.petSpecies);
+    }
+
+    // Date range filter
+    if (filters.dateRange !== 'all') {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      switch (filters.dateRange) {
+        case 'today':
+          filtered = filtered.filter(adopt => {
+            const adoptDate = new Date(adopt.date);
+            return adoptDate >= today;
+          });
+          break;
+        case 'week':
+          const weekAgo = new Date(today);
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          filtered = filtered.filter(adopt => {
+            const adoptDate = new Date(adopt.date);
+            return adoptDate >= weekAgo;
+          });
+          break;
+        case 'month':
+          const monthAgo = new Date(today);
+          monthAgo.setMonth(monthAgo.getMonth() - 1);
+          filtered = filtered.filter(adopt => {
+            const adoptDate = new Date(adopt.date);
+            return adoptDate >= monthAgo;
+          });
+          break;
+        default:
+          break;
+      }
+    }
+
+    // Search term filter
+    if (filters.searchTerm) {
+      const searchLower = filters.searchTerm.toLowerCase();
+      filtered = filtered.filter(adopt => 
+        adopt.name?.toLowerCase().includes(searchLower) ||
+        adopt.phone?.toLowerCase().includes(searchLower) ||
+        adopt.pet?.species?.toLowerCase().includes(searchLower) ||
+        adopt.pet?.breed?.toLowerCase().includes(searchLower) ||
+        adopt.occupation?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    setFilteredAdoptions(filtered);
+  };
+
+  // Handle filter changes
+  const handleFilterChange = (filterType, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterType]: value
+    }));
+  };
+
 
   const updateAdoptionStatus = async (adoptionId, status, visit = null) => {
     try {
@@ -83,7 +171,7 @@ const ManageAdoption = () => {
   doc.text(`Generated: ${new Date().toLocaleString()}`, 40, 60);
 
   // Build Table Body
-  const body = adoptions.map((a) => [
+  const body = filteredAdoptions.map((a) => [
     `${a.pet?.species || "-"} / ${a.pet?.breed || "-"}`,
     a.name || "N/A",
     a.age || "N/A",
@@ -123,12 +211,12 @@ const ManageAdoption = () => {
     doc.text("Summary", 40, y);
     doc.setFontSize(10);
     y += 16;
-    doc.text(`Total adoptions: ${adoptions.length}`, 40, y);
+    doc.text(`Total adoptions: ${filteredAdoptions.length}`, 40, y);
 
-    const pending = adoptions.filter((a) => a.status === "pending").length;
-    const approved = adoptions.filter((a) => a.status === "approved").length;
-    const completed = adoptions.filter((a) => a.status === "completed").length;
-    const rejected = adoptions.filter((a) => a.status === "rejected").length;
+    const pending = filteredAdoptions.filter((a) => a.status === "pending").length;
+    const approved = filteredAdoptions.filter((a) => a.status === "approved").length;
+    const completed = filteredAdoptions.filter((a) => a.status === "completed").length;
+    const rejected = filteredAdoptions.filter((a) => a.status === "rejected").length;
 
     y += 14;
     doc.text(`Pending: ${pending}, Approved: ${approved}, Completed: ${completed}, Rejected: ${rejected}`, 40, y);
@@ -146,12 +234,103 @@ const ManageAdoption = () => {
     }
   }, [aToken]);
 
+  // Apply filters whenever filters or adoptions change
+  useEffect(() => {
+    applyFilters();
+  }, [filters, adoptions]);
+
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>{error}</div>;
 
   return (
     <div className="px-4 pt-10 md:px-10 w-full">
-      <Title title="Manage Adoptions" subTitle="Track all adopter adoptions, approve or reject the requests, and manage adoption statuses." align="left"/>
+<Title title="Manage Adoptions" subTitle="Track all adopter adoptions, approve or reject the requests, and manage adoption statuses." align="left"/>
+
+      {/* Filters Section */}
+      <div className="bg-white rounded-xl shadow-lg border border-gray-200 mt-6 p-6">
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          {/* Search Term */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+            <input
+              type="text"
+              placeholder="Search by name, phone, pet..."
+              value={filters.searchTerm}
+              onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
+            />
+          </div>
+
+          {/* Status Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <select
+              value={filters.status}
+              onChange={(e) => handleFilterChange('status', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
+            >
+              <option value="all">All Status</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="completed">Completed</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+
+          {/* Payment Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Payment</label>
+            <select
+              value={filters.payment}
+              onChange={(e) => handleFilterChange('payment', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
+            >
+              <option value="all">All Payments</option>
+              <option value="paid">Paid</option>
+              <option value="unpaid">Not Paid</option>
+            </select>
+          </div>
+
+          {/* Pet Species Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Pet Species</label>
+            <select
+              value={filters.petSpecies}
+              onChange={(e) => handleFilterChange('petSpecies', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
+            >
+              <option value="all">All Species</option>
+              {[...new Set(adoptions.map(adopt => adopt.pet?.species).filter(Boolean))].map(species => (
+                <option key={species} value={species}>{species}</option>
+              ))}
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          {/* Date Range Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
+            <select
+              value={filters.dateRange}
+              onChange={(e) => handleFilterChange('dateRange', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
+            >
+              <option value="all">All Time</option>
+              <option value="today">Today</option>
+              <option value="week">Last 7 Days</option>
+              <option value="month">Last 30 Days</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Results Count */}
+        <div className="mt-4">
+          <p className="text-sm text-gray-600">
+            Showing <span className="font-semibold">{filteredAdoptions.length}</span> of <span className="font-semibold">{adoptions.length}</span> adoptions
+          </p>
+        </div>
+      </div>
 
       <div className="max-w-7xl w-full rounded-2xl overflow-hidden shadow-xl border border-gray-200 mt-6 bg-white">
         <div className="overflow-x-auto">
@@ -170,7 +349,7 @@ const ManageAdoption = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {adoptions.length === 0 ? (
+              {filteredAdoptions.length === 0 ? (
                 <tr>
                   <td colSpan="9" className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center justify-center">
@@ -178,12 +357,17 @@ const ManageAdoption = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                       <p className="text-gray-500 text-lg font-medium">No adoptions found</p>
-                      <p className="text-gray-400 text-sm">Adoption applications will appear here</p>
+                      <p className="text-gray-400 text-sm">
+                        {adoptions.length === 0 
+                          ? "Adoption applications will appear here" 
+                          : "No adoptions match your current filters. Try adjusting your search criteria."
+                        }
+                      </p>
                     </div>
                   </td>
                 </tr>
               ) : (
-                adoptions.map((adopt, index) => (
+                filteredAdoptions.map((adopt, index) => (
                   <tr key={adopt._id} className={`hover:bg-gray-50 transition-colors duration-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-4">
