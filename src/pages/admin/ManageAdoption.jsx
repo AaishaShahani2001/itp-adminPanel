@@ -24,8 +24,7 @@ const ManageAdoption = () => {
     status: 'all',
     payment: 'all',
     petSpecies: 'all',
-    dateRange: 'all',
-    searchTerm: ''
+    dateRange: 'all'
   });
 
   const fetchAdminAdoptions = async () => {
@@ -98,18 +97,6 @@ const ManageAdoption = () => {
         default:
           break;
       }
-    }
-
-    // Search term filter
-    if (filters.searchTerm) {
-      const searchLower = filters.searchTerm.toLowerCase();
-      filtered = filtered.filter(adopt => 
-        adopt.name?.toLowerCase().includes(searchLower) ||
-        adopt.phone?.toLowerCase().includes(searchLower) ||
-        adopt.pet?.species?.toLowerCase().includes(searchLower) ||
-        adopt.pet?.breed?.toLowerCase().includes(searchLower) ||
-        adopt.occupation?.toLowerCase().includes(searchLower)
-      );
     }
 
     setFilteredAdoptions(filtered);
@@ -244,24 +231,12 @@ const ManageAdoption = () => {
 
   return (
     <div className="px-4 pt-10 md:px-10 w-full">
-<Title title="Manage Adoptions" subTitle="Track all adopter adoptions, approve or reject the requests, and manage adoption statuses." align="left"/>
+    <Title title="Manage Adoptions" subTitle="Track all adopter adoptions, approve or reject the requests, and manage adoption statuses." align="left"/>
 
       {/* Filters Section */}
-      <div className="bg-white rounded-xl shadow-lg border border-gray-200 mt-6 p-6">
+      <div className="mt-6 p-6">
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          {/* Search Term */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
-            <input
-              type="text"
-              placeholder="Search by name, phone, pet..."
-              value={filters.searchTerm}
-              onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
-            />
-          </div>
-
           {/* Status Filter */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
@@ -323,16 +298,9 @@ const ManageAdoption = () => {
             </select>
           </div>
         </div>
-
-        {/* Results Count */}
-        <div className="mt-4">
-          <p className="text-sm text-gray-600">
-            Showing <span className="font-semibold">{filteredAdoptions.length}</span> of <span className="font-semibold">{adoptions.length}</span> adoptions
-          </p>
-        </div>
       </div>
 
-      <div className="max-w-7xl w-full rounded-2xl overflow-hidden shadow-xl border border-gray-200 mt-6 bg-white">
+      <div className="w-full rounded-2xl overflow-hidden shadow-xl border border-gray-200 mt-6 bg-white">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left text-sm">
               <thead className="bg-primary/30">
@@ -474,12 +442,12 @@ const ManageAdoption = () => {
                             className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 bg-white"
                           >
                             <option value="pending" disabled>Pending</option>
-                            <option value="approved" disabled={!adopt.isPaid}>Approve</option>
+                            <option value="approved">Approve</option>
                             <option value="rejected">Reject</option>
                           </select>
                         )}
                         
-                        {adopt.status === "approved" && (
+                        {adopt.status === "approved" && adopt.isPaid && (
                           <div className="flex flex-col gap-1">
                             {adopt.visit ? (
                               <button
@@ -502,6 +470,18 @@ const ManageAdoption = () => {
                                 Set Visit
                               </button>
                             )}
+                          </div>
+                        )}
+                        
+                        {/* Show payment status for approved but not paid adoptions */}
+                        {adopt.status === "approved" && !adopt.isPaid && (
+                          <div className="flex flex-col gap-1">
+                            <span className="inline-flex items-center px-3 py-1.5 bg-yellow-50 text-yellow-700 rounded-lg text-xs font-medium border border-yellow-200">
+                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                              </svg>
+                              Awaiting Payment
+                            </span>
                           </div>
                         )}
                       </div>
