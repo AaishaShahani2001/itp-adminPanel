@@ -123,7 +123,7 @@ const AddCareTaker = () => {
       Object.keys(formData).forEach((key) => data.append(key, formData[key]));
       data.append("image", image);
 
-      const res = await axios.post("http://localhost:3000/api/admin/add-caretaker", data, {
+      const res = await axios.post("https://itp-backend-waw1.onrender.com/api/admin/add-caretaker", data, {
         headers: { aToken },
       });
 

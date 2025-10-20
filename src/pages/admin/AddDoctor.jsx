@@ -93,7 +93,7 @@ const AddDoctor = () => {
       data.append("image", image);
 
       const res = await axios.post(
-        "http://localhost:3000/api/admin/add-doctor",
+        "https://itp-backend-waw1.onrender.com/api/admin/add-doctor",
         data,
         { headers: { atoken: aToken } }
       );

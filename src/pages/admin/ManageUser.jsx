@@ -13,7 +13,7 @@ const ManageUser = () => {
   // Fetch users from backend
   const fetchUsers = async () => {
     try {
-      const res = await axios.get("http://localhost:3000/api/admin/get-user", {
+      const res = await axios.get("https://itp-backend-waw1.onrender.com/api/admin/get-user", {
         headers: {atoken: aToken},
       });
       if (res.data.success) {

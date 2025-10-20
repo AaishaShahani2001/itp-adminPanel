@@ -5,7 +5,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 
-const API_BASE = "http://localhost:3000/api/admin";
+const API_BASE = "https://itp-backend-waw1.onrender.comapi/admin";
 
 const ManageStaffs = () => {
   const { aToken } = useAdminContext();
