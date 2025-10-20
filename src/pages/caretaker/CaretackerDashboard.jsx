@@ -5,7 +5,7 @@ import autoTable from "jspdf-autotable";
 import { useSnackbar } from "notistack";
 import ConfirmBox from "../../components/ConfirmBox";
 
-const API_BASE = "http://localhost:3000/api";
+const API_BASE = "https://itp-backend-waw1.onrender.com";
 
 function broadcastAppointmentsChanged(detail = {}) {
   window.dispatchEvent(new CustomEvent("appointments:changed", { detail }));
