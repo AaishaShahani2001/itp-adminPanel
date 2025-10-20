@@ -2,7 +2,7 @@ import { createContext, useContext } from "react";
 import axios from 'axios'
 import { useState } from "react";
 
-axios.defaults.baseURL = import.meta.env.VITE_BASE_URL;
+axios.defaults.baseURL = "https://itp-backend-waw1.onrender.com";
 
 export const DoctorContext = createContext();
 
@@ -10,7 +10,7 @@ export const DoctorProvider = ({ children }) => {
 
     const [dToken, setDToken] = useState(localStorage.getItem('dToken') ? localStorage.getItem('dToken') : '')
 
-    const backendUrl = import.meta.env.VITE_BASE_URL
+    const backendUrl = "https://itp-backend-waw1.onrender.com"
 
     const value = {
         dToken, setDToken, backendUrl
