@@ -14,7 +14,7 @@ import {
 import enUS from "date-fns/locale/en-US";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 
-const API_BASE = "http://localhost:3000/api";
+const API_BASE = "https://itp-backend-waw1.onrender.com";
 
 /* ---------- date-fns localizer ---------- */
 const locales = { "en-US": enUS };
@@ -95,9 +95,9 @@ export default function ScheduleCalendar({
         });
 
     const [vRes, gRes, dRes] = await Promise.allSettled([
-      fetch(`${API_BASE}/vet/appointments?date=${ymd}`),
-      fetch(`${API_BASE}/grooming/appointments?date=${ymd}`),
-      fetch(`${API_BASE}/daycare/appointments?date=${ymd}`),
+      fetch(`${API_BASE}/api/vet/appointments?date=${ymd}`),
+      fetch(`${API_BASE}/api/grooming/appointments?date=${ymd}`),
+      fetch(`${API_BASE}/api/daycare/appointments?date=${ymd}`),
     ]);
 
     const dayEvents = [];

@@ -7,6 +7,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
+import { useAppContext } from "../context/AppContext"
 
 /* ---- local-date helpers (avoid UTC shifts) ---- */
 function toLocalYMD(d) {
@@ -37,6 +38,7 @@ const daycarePackages = [
 
 const PET_TYPES = ["Dog", "Cat", "Rabbit", "Parrot", "Other"];
 
+/* --- Time slots: every 30 mins between 08:00–20:00 --- */
 const buildSlots = () => {
   const slots = [];
   for (let m = 8 * 60; m <= 20 * 60; m += 30) {
@@ -51,56 +53,30 @@ const buildSlots = () => {
 };
 const TIME_SLOTS = buildSlots();
 
+/* ---- same email rules as booking ---- */
 const DISPOSABLE_DOMAINS = new Set([
   "mailinator.com","yopmail.com","guerrillamail.com","10minutemail.com",
   "temp-mail.org","tempmail.dev","discard.email","getnada.com","trashmail.com",
 ]);
 
+/* ---- names ---- */
 const NAME_REGEX = /^[A-Za-z\s]+$/;
-const PHONE_REGEX = /^(011|070|071|072|075|076|077|078)\d{7}$/;
-const ALLOWED_PREFIXES = ["011","070","071","072","075","076","077","078"];
-const TEN_DIGIT_PREFIX = new RegExp(`^(?:${ALLOWED_PREFIXES.join("|")})\\d{7}$`);
 
-const schema = yup.object({
-  ownerName: yup.string().trim().required("Owner name is required.").min(2).max(60).matches(NAME_REGEX, "Only letters and spaces."),
-  ownerEmail: yup
-    .string()
-    .transform((v) => (typeof v === "string" ? v.trim().toLowerCase() : v))
-    .required("Email is required.")
-    .email("Enter a valid email.")
-    .max(254)
-    .test("not-disposable", "Please use a real (non-disposable) email.", (val) => {
-      if (!val || !val.includes("@")) return true;
-      const domain = val.split("@")[1];
-      return domain && !DISPOSABLE_DOMAINS.has(domain.toLowerCase());
-    }),
-  ownerPhone: yup.string().required("Contact number is required.").matches(PHONE_REGEX, "Must start with 011/070/071/072/075/076/077/078 and be 10 digits."),
-  emergencyPhone: yup
-    .string()
-    .nullable()
-    .transform((v) => (v === "" ? null : (v || "").replace(/\D/g, "").slice(0, 10)))
-    .test("em-prefix", `Enter a 10-digit number starting with ${ALLOWED_PREFIXES.join("/")}`, (val) => !val || TEN_DIGIT_PREFIX.test(val)),
-  petType: yup.string().required("Select a pet type.").oneOf(PET_TYPES),
-  petName: yup.string().transform((v) => (typeof v === "string" ? v.trim() : v)).required("Pet name is required.").min(2).max(40).matches(NAME_REGEX, "Only letters and spaces."),
-  packageId: yup.string().required("Select a package.").oneOf(daycarePackages.map((p) => p.id)),
-  date: yup
-    .date()
-    .typeError("Please choose a valid date.")
-    .required("Date is required.")
-    .min(new Date(new Date().setHours(0, 0, 0, 0)), "Date cannot be in the past."),
-  dropOff: yup.number().typeError("Select a drop-off time.").required("Drop-off time is required.").min(480).max(1200),
-  pickUp: yup
-    .number()
-    .typeError("Select a pick-up time.")
-    .required("Pick-up time is required.")
-    .min(480)
-    .max(1200)
-    .test("after-drop", "Pick-up must be after drop-off.", function (val) {
-      const { dropOff } = this.parent;
-      return typeof dropOff === "number" && typeof val === "number" ? val > dropOff : false;
-    }),
-  notes: yup.string().max(300, "Keep notes under 300 characters."),
-});
+/* ---- Phone handling: UI stores only the 9 digits AFTER +94 ---- */
+const LK_AFTER_CC_REGEX = /^(11|70|71|72|75|76|77|78)\d{7}$/;
+
+/** Convert a full +94XXXXXXXXX to just the 9 digits for the input field */
+function toNineAfter94(e164 = "") {
+  const m = String(e164).match(/^\+94(\d{9})$/);
+  return m ? m[1] : "";
+}
+
+/** Build E.164 from the 9 digits field (or return null/empty appropriately) */
+function toE164FromNine(nine = "", nullable = false) {
+  const v = String(nine || "").replace(/\D/g, "").slice(0, 9);
+  if (!v) return nullable ? null : "";
+  return `+94${v}`;
+}
 
 export default function EditDaycareForm() {
   const navigate = useNavigate();
@@ -108,6 +84,7 @@ export default function EditDaycareForm() {
   const { id: idFromParams } = useParams();
   const [params] = useSearchParams();
   const location = useLocation();
+  const { backendUrl } = useAppContext();
 
   // Accept id from /daycare-edit/:id OR ?editId= OR location.state.appointment
   const editId =
@@ -115,6 +92,65 @@ export default function EditDaycareForm() {
     params.get("editId") ||
     location.state?.appointment?._id ||
     location.state?.appointment?.id;
+
+  /* ----- validation schema (mirrors booking form) ----- */
+  const schema = yup.object({
+    ownerName: yup.string().trim().required("Owner name is required.")
+      .min(2).max(60).matches(NAME_REGEX, "Only letters and spaces."),
+    ownerEmail: yup
+      .string()
+      .transform((v) => (typeof v === "string" ? v.trim().toLowerCase() : v))
+      .required("Email is required.")
+      .email("Enter a valid email.")
+      .max(254)
+      .test("not-disposable", "Please use a real (non-disposable) email.", (val) => {
+        if (!val || !val.includes("@")) return true;
+        const domain = val.split("@")[1];
+        return domain && !DISPOSABLE_DOMAINS.has(domain.toLowerCase());
+      }),
+
+    // store ONLY the 9 digits here, validate the 9 digits (same as booking)
+    ownerPhone: yup
+      .string()
+      .required("Phone is required")
+      .matches(LK_AFTER_CC_REGEX, "Enter 9 digits after +94 (e.g., 711234567 or 112345678)"),
+
+    emergencyPhone: yup
+      .string()
+      .transform((v) => (v == null ? "" : String(v)))
+      .test(
+        "lk-emer",
+        "Enter 9 digits after +94 (e.g., 711234567 or 112345678)",
+        (val) => val === "" || LK_AFTER_CC_REGEX.test(val)
+      ),
+
+    petType: yup.string().required("Select a pet type.").oneOf(PET_TYPES),
+    petName: yup.string().transform((v) => (typeof v === "string" ? v.trim() : v))
+      .required("Pet name is required.").min(2).max(40).matches(NAME_REGEX, "Only letters and spaces."),
+
+    packageId: yup.string().required("Select a package."),
+
+    date: yup
+      .date()
+      .typeError("Please choose a valid date.")
+      .required("Date is required.")
+      .min(new Date(new Date().setHours(0, 0, 0, 0)), "Date cannot be in the past."),
+
+    dropOff: yup.number().typeError("Select a drop-off time.").required("Drop-off time is required.").min(480).max(1200),
+
+    pickUp: yup
+      .number()
+      .typeError("Select a pick-up time.")
+      .required("Pick-up time is required.")
+      .min(480)
+      .max(1200)
+      .test("after-drop", "Pick-up must be after drop-off.", function (val) {
+        const { dropOff } = this.parent;
+        return typeof dropOff === "number" && typeof val === "number" ? val > dropOff : false;
+      }),
+
+    notes: yup.string().max(300, "Keep notes under 300 characters."),
+  });
 
   const {
     register,
@@ -129,8 +165,8 @@ export default function EditDaycareForm() {
     defaultValues: {
       ownerName: "",
       ownerEmail: "",
-      ownerPhone: "",
-      emergencyPhone: "",
+      ownerPhone: "",       // 9 digits only
+      emergencyPhone: "",   // 9 digits only (optional)
       petType: "",
       petName: "",
       packageId: "",
@@ -154,7 +190,7 @@ export default function EditDaycareForm() {
 
     (async () => {
       try {
-        const r = await fetch(`http://localhost:3000/api/daycare/${editId}`);
+        const r = await fetch(`${backendUrl}/api/daycare/${editId}`);
         const ct = r.headers.get("content-type") || "";
         const data = ct.includes("application/json") ? await r.json() : await r.text();
 
@@ -169,8 +205,9 @@ export default function EditDaycareForm() {
         reset({
           ownerName: appt.ownerName || "",
           ownerEmail: appt.ownerEmail || "",
-          ownerPhone: appt.ownerPhone || "",
-          emergencyPhone: appt.emergencyPhone || "",
+          // convert stored E.164 → 9 digits after +94 for the UI
+          ownerPhone: toNineAfter94(appt.ownerPhone || ""),
+          emergencyPhone: appt.emergencyPhone ? toNineAfter94(appt.emergencyPhone) : "",
           petType: appt.petType || "",
           petName: appt.petName || "",
           packageId: appt.packageId || "",
@@ -194,11 +231,16 @@ export default function EditDaycareForm() {
   const onSubmit = async (values) => {
     try {
       const dateISO = toLocalYMD(normalizeToLocalNoon(values.date));
+
+      // Build E.164 numbers from the 9-digit UI fields
+      const ownerPhoneFull = toE164FromNine(values.ownerPhone);
+      const emergencyPhoneFull = toE164FromNine(values.emergencyPhone, true);
+
       const payload = {
         ownerName: values.ownerName.trim(),
         ownerEmail: values.ownerEmail.trim(),
-        ownerPhone: values.ownerPhone.trim(),
-        emergencyPhone: values.emergencyPhone ? values.emergencyPhone.trim() : null,
+        ownerPhone: ownerPhoneFull,
+        emergencyPhone: emergencyPhoneFull,
         petType: values.petType,
         petName: values.petName.trim(),
         packageId: values.packageId,
@@ -208,7 +250,7 @@ export default function EditDaycareForm() {
         notes: values.notes?.trim() || "",
       };
 
-      const r = await fetch(`http://localhost:3000/api/daycare/${editId}`, {
+      const r = await fetch(`${backendUrl}/api/daycare/${editId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -269,17 +311,28 @@ export default function EditDaycareForm() {
                 {errors.ownerName && <p className="mt-1 text-sm text-red-600">{errors.ownerName.message}</p>}
               </div>
 
+              {/* Contact Number (+94 prefix, 9 digits input) */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Contact Number</label>
-                <input
-                  type="tel"
-                  inputMode="numeric"
-                  maxLength={10}
-                  placeholder="0712345678 / 0112345678"
-                  {...register("ownerPhone", { setValueAs: (v) => (v || "").replace(/\D/g, "").slice(0, 10) })}
-                  onInput={(e) => (e.target.value = e.target.value.replace(/\D/g, "").slice(0, 10))}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
+                <div className="flex">
+                  <span className="inline-flex items-center px-3 rounded-l-lg border border-slate-300 bg-slate-100 text-slate-700 select-none">+94</span>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={9}
+                    placeholder="711234567 or 112345678"
+                    {...register("ownerPhone")}
+                    onInput={(e) => {
+                      let v = e.currentTarget.value.replace(/\D/g, "");
+                      if (v.startsWith("0")) v = v.slice(1);
+                      e.currentTarget.value = v.slice(0, 9);
+                    }}
+                    className="w-full rounded-r-lg border border-slate-300 border-l-0 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <p className="mt-1 text-[12px] text-slate-500">
+                  Type the <b>9 digits after +94</b> (e.g., <code>711234567</code> or <code>112345678</code>).
+                </p>
                 {errors.ownerPhone && <p className="mt-1 text-sm text-red-600">{errors.ownerPhone.message}</p>}
               </div>
 
@@ -296,17 +349,25 @@ export default function EditDaycareForm() {
                 {errors.ownerEmail && <p className="mt-1 text-sm text-red-600">{errors.ownerEmail.message}</p>}
               </div>
 
+              {/* Emergency Contact (+94 prefix, 9 digits input, optional) */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Emergency Contact (optional)</label>
-                <input
-                  type="tel"
-                  inputMode="numeric"
-                  maxLength={10}
-                  placeholder="0712345678 / 0112345678"
-                  {...register("emergencyPhone")}
-                  onInput={(e) => (e.target.value = e.target.value.replace(/\D/g, "").slice(0, 10))}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
+                <div className="flex">
+                  <span className="inline-flex items-center px-3 rounded-l-lg border border-slate-300 bg-slate-100 text-slate-700 select-none">+94</span>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={9}
+                    placeholder="711234567 or 112345678"
+                    {...register("emergencyPhone")}
+                    onInput={(e) => {
+                      let v = e.currentTarget.value.replace(/\D/g, "");
+                      if (v.startsWith("0")) v = v.slice(1);
+                      e.currentTarget.value = v.slice(0, 9);
+                    }}
+                    className="w-full rounded-r-lg border border-slate-300 border-l-0 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
                 {errors.emergencyPhone && <p className="mt-1 text-sm text-red-600">{errors.emergencyPhone.message}</p>}
               </div>
             </div>
@@ -428,7 +489,7 @@ export default function EditDaycareForm() {
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 type="button"
-                onClick={() => navigate("/book/daycare")}
+                onClick={() => navigate("/MyCareAppointments")}
                 className="rounded-lg border border-slate-300 bg-white text-slate-700 px-4 py-2 hover:bg-slate-50"
               >
                 Cancel

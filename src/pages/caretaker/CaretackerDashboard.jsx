@@ -5,7 +5,7 @@ import autoTable from "jspdf-autotable";
 import { useSnackbar } from "notistack";
 import ConfirmBox from "../../components/ConfirmBox";
 
-const API_BASE = "https://itp-backend-waw1.onrender.com/api";
+const API_BASE = "http://localhost:3000/api";
 
 function broadcastAppointmentsChanged(detail = {}) {
   window.dispatchEvent(new CustomEvent("appointments:changed", { detail }));
@@ -68,8 +68,8 @@ export default function CaretackerDashboard() {
     setLoading(true);
     try {
       const [gRes, dRes] = await Promise.all([
-        fetch(`${API_BASE}/grooming/all`),
-        fetch(`${API_BASE}/daycare/all`),
+        fetch(`${API_BASE}/api/grooming/all`),
+        fetch(`${API_BASE}/api/daycare/all`),
       ]);
       const g = await gRes.json();
       const d = await dRes.json();
@@ -157,8 +157,8 @@ export default function CaretackerDashboard() {
     try {
       const endpoint =
         row.service === "grooming"
-          ? `${API_BASE}/grooming/${row._id}/status`
-          : `${API_BASE}/daycare/${row._id}/status`;
+          ? `${API_BASE}/api/grooming/${row._id}/status`
+          : `${API_BASE}/api/daycare/${row._id}/status`;
 
       const payload = {
         status: nextStatus,
