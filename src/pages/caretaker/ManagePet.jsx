@@ -464,7 +464,7 @@ const deletePet = async (petId) => {
         </div>
       </div>
 
-      <div className='max-w-7xl w-full rounded-md overflow-hidden border border-borderColor mt-6'>
+      <div className='w-full rounded-md overflow-hidden border border-borderColor mt-6'>
         <table className='w-full border-collapse text-left text-sm text-gray-600'>
           <thead className='text-gray-500'>
             <tr>
@@ -521,7 +521,7 @@ const deletePet = async (petId) => {
                 <td className='p-3'>{pet.goodWithKids || '-'}</td>
                 <td className='p-3'>{pet.goodWithPets || '-'}</td>
                 <td className='flex items-center p-3 gap-5'>
-                  {pet.isAdopted ? (
+                  {pet.isAdopted === true ? (
                     <span className='text-green-600 font-medium bg-green-50 px-3 py-2 rounded-full border border-green-200'>
                       Pet is adopted
                     </span>
