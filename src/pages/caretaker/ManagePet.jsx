@@ -414,7 +414,7 @@ const deletePet = async (petId) => {
               <option value="puppy">Puppy (≤1yr)</option>
               <option value="young">Young (1-3yrs)</option>
               <option value="adult">Adult (3-7yrs)</option>
-              <option value="senior">Senior (>7yrs)</option>
+              <option value="senior">Senior (above 7yrs)</option>
             </select>
           </div>
 
@@ -428,7 +428,7 @@ const deletePet = async (petId) => {
               <option value="all">All Prices</option>
               <option value="low">Low (≤5k)</option>
               <option value="medium">Medium (5k-15k)</option>
-              <option value="high">High (>15k)</option>
+              <option value="high">High (above 15k)</option>
             </select>
           </div>
 
