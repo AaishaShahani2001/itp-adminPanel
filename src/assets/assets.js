@@ -110,6 +110,7 @@ export const adminMenuLinks = [
     { name: "Add Doctor", path: "/admin/add-doctor", icon: add, coloredIcon: add_colored },
     { name: "Add Caretaker", path: "/admin/add-caretaker", icon: add, coloredIcon: add_colored },
     { name: "Manage User Details", path: "/admin/manage-user", icon: dashboard, coloredIcon: dashboard_colored },
+    { name: "Manage Staffs", path: "/admin/manage-staffs", icon: dashboard, coloredIcon: dashboard_colored },
     { name: "Manage Adoption", path: "/admin/manage-adoption", icon: list, coloredIcon: list_colored },
     { name: "Manage Inventory", path: "/admin/manage-inventory", icon: inventoryIcon, coloredIcon: inventoryIconColored },
 ]
