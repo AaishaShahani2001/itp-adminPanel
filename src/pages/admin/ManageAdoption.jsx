@@ -474,7 +474,7 @@ const ManageAdoption = () => {
                             className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 bg-white"
                           >
                             <option value="pending" disabled>Pending</option>
-                            <option value="approved" disabled={!adopt.isPaid}>Approve</option>
+                            <option value="approved">Approve</option>
                             <option value="rejected">Reject</option>
                           </select>
                         )}
