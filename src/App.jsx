@@ -25,6 +25,7 @@ import Suppliers from './pages/admin/Suppliers.jsx';
 import AddDoctor from './pages/admin/AddDoctor.jsx';
 import AddCareTaker from './pages/admin/AddCareTaker.jsx';
 import ManageUser from './pages/admin/ManageUser.jsx';
+import ManageStaffs from './pages/admin/ManageStaffs.jsx';
 
 
 const App = () => {
