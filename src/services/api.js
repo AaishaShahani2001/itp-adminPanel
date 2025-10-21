@@ -30,7 +30,7 @@ api.interceptors.response.use(
 
 // ---------------- INVENTORY ----------------
 export const getProducts = (params = {}) =>
-  api.get('/inventory', { params }).then(res => res.data);
+  axios.get(`${API_BASE_URL}/inventory`, { params }).then(res => res.data);
 
 export const getProduct = (id) =>
   api.get(`/inventory/${id}`).then(res => res.data);
