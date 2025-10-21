@@ -521,16 +521,24 @@ const deletePet = async (petId) => {
                 <td className='p-3'>{pet.goodWithKids || '-'}</td>
                 <td className='p-3'>{pet.goodWithPets || '-'}</td>
                 <td className='flex items-center p-3 gap-5'>
-                  <img
-                    src={assets.edit_black}
-                    alt='edit'
-                    className='cursor-pointer'
-                    onClick={() => handleEditClick(pet)}/>
-                  <button
-                        onClick={() => deletePet(pet._id)}
-                        className='border border-red-700 px-2 py-2 rounded-full hover:bg-red-400 hover:text-white transition-all'>
-                        Remove Pet
-                  </button>
+                  {pet.isAdopted ? (
+                    <span className='text-green-600 font-medium bg-green-50 px-3 py-2 rounded-full border border-green-200'>
+                      Pet is adopted
+                    </span>
+                  ) : (
+                    <>
+                      <img
+                        src={assets.edit_black}
+                        alt='edit'
+                        className='cursor-pointer'
+                        onClick={() => handleEditClick(pet)}/>
+                      <button
+                            onClick={() => deletePet(pet._id)}
+                            className='border border-red-700 px-2 py-2 rounded-full hover:bg-red-400 hover:text-white transition-all'>
+                            Remove Pet
+                      </button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))
