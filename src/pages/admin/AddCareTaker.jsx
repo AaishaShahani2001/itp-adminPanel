@@ -57,15 +57,13 @@ const AddCareTaker = () => {
       return false;
     }
 
-    // 4 Strong password: 8+ chars, 1 uppercase, 1 lowercase, 1 number, 1 special
-    const passwordPattern =
-      /^(?=.[a-z])(?=.[A-Z])(?=.\d)(?=.[@$!%?&])[A-Za-z\d@$!%?&]{8,}$/;
-    if (!passwordPattern.test(password)) {
-      toast.error(
-        "Password must have 8+ chars, incl. uppercase, lowercase, number & special symbol."
-      );
-      return false;
-    }
+    if (!password.trim()) toast.error("Password is required.");
+    else if (password.length < 6)
+      toast.error("Password must be at least 6 characters long.");
+    else if (!/[A-Z]/.test(password))
+      toast.error("Password must contain at least one uppercase letter.");
+    else if (!/[0-9]/.test(password))
+      toast.error("Password must contain at least one number.");
 
     // 5 Speciality validation: 2–50 chars, letters/spaces only
     if (!/^[A-Za-z\s]{2,50}$/.test(speciality.trim())) {
