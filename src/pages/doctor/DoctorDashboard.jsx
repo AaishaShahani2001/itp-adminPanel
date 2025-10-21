@@ -410,7 +410,7 @@ export default function DoctorDashboard() {
                     <span className="text-slate-600">{a.medicalFilePath.split("/").pop()}</span>
                   </div>
                   <a
-                    href={`${API_BASE}${a.medicalFilePath}`}
+                    href={a.medicalFilePath}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="rounded-md bg-slate-800 text-white text-xs font-semibold px-3 py-2 hover:bg-black"
