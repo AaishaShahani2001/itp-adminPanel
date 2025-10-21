@@ -521,7 +521,7 @@ const deletePet = async (petId) => {
                 <td className='p-3'>{pet.goodWithKids || '-'}</td>
                 <td className='p-3'>{pet.goodWithPets || '-'}</td>
                 <td className='flex items-center p-3 gap-5'>
-                  {pet.isAdopted === true ? (
+                  {pet.isAdopted ? (
                     <span className='text-green-600 font-medium bg-green-50 px-3 py-2 rounded-full border border-green-200'>
                       Pet is adopted
                     </span>
