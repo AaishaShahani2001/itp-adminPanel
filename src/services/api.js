@@ -33,7 +33,7 @@ export const getProducts = (params = {}) =>
   axios.get(`${API_BASE_URL}/inventory`, { params }).then(res => res.data);
 
 export const getProduct = (id) =>
-  api.get(`/inventory/${id}`).then(res => res.data);
+  axios.get(`${API_BASE_URL}/inventory/${id}`).then(res => res.data);
 
 export const createProduct = (productData) =>
   api.post('/inventory', productData).then(res => res.data);
