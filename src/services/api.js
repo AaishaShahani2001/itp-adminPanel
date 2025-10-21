@@ -1,7 +1,7 @@
 // src/services/api.js
 import axios from 'axios';
 
-const API_BASE_URL = "https://itp-backend-waw1.onrender.com";
+const API_BASE_URL = 'https://itp-backend-waw1.onrender.com/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -30,10 +30,10 @@ api.interceptors.response.use(
 
 // ---------------- INVENTORY ----------------
 export const getProducts = (params = {}) =>
-  axios.get(`${API_BASE_URL}/inventory`, { params }).then(res => res.data);
+  api.get('/inventory', { params }).then(res => res.data);
 
 export const getProduct = (id) =>
-  axios.get(`${API_BASE_URL}/inventory/${id}`).then(res => res.data);
+  api.get(`/inventory/${id}`).then(res => res.data);
 
 export const createProduct = (productData) =>
   api.post('/inventory', productData).then(res => res.data);
