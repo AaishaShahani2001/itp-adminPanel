@@ -66,6 +66,7 @@ export default function DoctorDashboard() {
   const [pendingNext, setPendingNext] = useState(null); // "accepted" / "rejected"
   const [confirmBusy, setConfirmBusy] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const [showMedicalModal, setShowMedicalModal] = useState(null);
 
   function openConfirm(row, nextStatus) {
     setPendingRow(row);
@@ -409,15 +410,13 @@ export default function DoctorDashboard() {
                     <span className="font-medium">Medical record:</span>{" "}
                     <span className="text-slate-600">{a.medicalFilePath.split("/").pop()}</span>
                   </div>
-                  <a
-                    href={a.medicalFilePath}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={() => setShowMedicalModal(a)}
                     className="rounded-md bg-slate-800 text-white text-xs font-semibold px-3 py-2 hover:bg-black"
-                    title="Open medical record in a new tab"
+                    title="View medical record"
                   >
                     View
-                  </a>
+                  </button>
                 </div>
               </div>
             )}
@@ -493,6 +492,70 @@ export default function DoctorDashboard() {
           </div>
         ) : null}
       </ConfirmBox>
+
+      {/* Medical File Modal */}
+      {showMedicalModal && (
+        <div className="fixed inset-0 backdrop-blur-sm bg-white/20 flex items-center justify-center z-50 p-4">
+          <div className="bg-white/95 backdrop-blur-md rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-white/20">
+            <div className="p-8">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-800">Medical Record</h2>
+                  <p className="text-gray-600 mt-1">View uploaded medical file</p>
+                </div>
+                <button
+                  onClick={() => setShowMedicalModal(null)}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all duration-200"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
+                <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                  <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Medical Document
+                </h3>
+                
+                {showMedicalModal.medicalFilePath ? (
+                  <div className="flex justify-center">
+                    <img 
+                      src={showMedicalModal.medicalFilePath} 
+                      alt="Medical Document" 
+                      className="max-w-full h-auto max-h-96 rounded-lg shadow-lg border-2 border-blue-200 object-cover"
+                      onError={(e) => {
+                        // Hide the broken image and show error message
+                        e.target.style.display = 'none';
+                        const errorDiv = document.createElement('div');
+                        errorDiv.className = 'text-center py-8';
+                        errorDiv.innerHTML = `
+                          <svg class="w-16 h-16 text-red-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                          </svg>
+                          <p class="text-red-600 font-medium">Unable to load medical file</p>
+                          <p class="text-gray-500 text-sm mt-2">The file may be corrupted or in an unsupported format</p>
+                        `;
+                        e.target.parentNode.appendChild(errorDiv);
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <p className="text-gray-500 font-medium">No medical file uploaded</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
