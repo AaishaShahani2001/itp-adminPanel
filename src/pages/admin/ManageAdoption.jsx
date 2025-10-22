@@ -24,7 +24,7 @@ const ManageAdoption = () => {
     status: 'all',
     payment: 'all',
     petSpecies: 'all',
-    dateRange: 'all',
+    dateRange: 'all'
   });
 
   const fetchAdminAdoptions = async () => {
@@ -96,7 +96,6 @@ const ManageAdoption = () => {
           break;
         default:
           break;
-      }
     }
 
   // Handle filter changes
