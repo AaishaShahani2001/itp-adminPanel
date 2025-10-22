@@ -96,7 +96,11 @@ const ManageAdoption = () => {
           break;
         default:
           break;
+      }
     }
+    
+    setFilteredAdoptions(filtered);
+  };
 
   // Handle filter changes
   const handleFilterChange = (filterType, value) => {
