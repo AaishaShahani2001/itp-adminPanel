@@ -298,13 +298,6 @@ const ManageAdoption = () => {
             </select>
           </div>
         </div>
-
-        {/* Results Count */}
-        <div className="mt-4">
-          <p className="text-sm text-gray-600">
-            Showing <span className="font-semibold">{filteredAdoptions.length}</span> of <span className="font-semibold">{adoptions.length}</span> adoptions
-          </p>
-        </div>
       </div>
 
       <div className="w-full rounded-2xl overflow-hidden shadow-xl border border-gray-200 mt-6 bg-white">
