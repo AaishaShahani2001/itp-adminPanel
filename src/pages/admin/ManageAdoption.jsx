@@ -25,7 +25,6 @@ const ManageAdoption = () => {
     payment: 'all',
     petSpecies: 'all',
     dateRange: 'all',
-    searchTerm: ''
   });
 
   const fetchAdminAdoptions = async () => {
@@ -99,21 +98,6 @@ const ManageAdoption = () => {
           break;
       }
     }
-
-    // Search term filter
-    if (filters.searchTerm) {
-      const searchLower = filters.searchTerm.toLowerCase();
-      filtered = filtered.filter(adopt => 
-        adopt.name?.toLowerCase().includes(searchLower) ||
-        adopt.phone?.toLowerCase().includes(searchLower) ||
-        adopt.pet?.species?.toLowerCase().includes(searchLower) ||
-        adopt.pet?.breed?.toLowerCase().includes(searchLower) ||
-        adopt.occupation?.toLowerCase().includes(searchLower)
-      );
-    }
-
-    setFilteredAdoptions(filtered);
-  };
 
   // Handle filter changes
   const handleFilterChange = (filterType, value) => {
@@ -250,18 +234,6 @@ const ManageAdoption = () => {
       <div className="bg-white rounded-xl shadow-lg border border-gray-200 mt-6 p-6">
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          {/* Search Term */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
-            <input
-              type="text"
-              placeholder="Search by name, phone, pet..."
-              value={filters.searchTerm}
-              onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
-            />
-          </div>
-
           {/* Status Filter */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
@@ -332,7 +304,7 @@ const ManageAdoption = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl w-full rounded-2xl overflow-hidden shadow-xl border border-gray-200 mt-6 bg-white">
+      <div className="w-full rounded-2xl overflow-hidden shadow-xl border border-gray-200 mt-6 bg-white">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left text-sm">
               <thead className="bg-primary/30">
